@@ -5,11 +5,20 @@ import os
 
 #TODO:
 #como hago un typedef int lala, esto lo necesito para definir nfq_callback
+#test open_nfnl function
+#
+#struct nfq_handle *nfq_open_nfnl(struct nfnl_handle *nfnlh)
+##uint32_t nfq_get_nfmark(struct nfq_data *nfad)
+##int nfq_get_timestamp(struct nfq_data *nfad, struct timeval *tv)
+#struct nfqnl_msg_packet_hw *nfq_get_packet_hw(struct nfq_data *nfad)
+#int nfq_set_verdict_mark(struct nfq_q_handle *qh, u_int32_t id, u_int32_t verdict, u_int32_t mark, u_int32_t datalen, unsigned char *buf)
 
-#cargamos la libreria
+
+
+#load library
 netfilter = ctypes.cdll.LoadLibrary(utils.find_library('netfilter_queue'))
 
-#declaramos los structs
+
 class nfq_handle (ctypes.Structure):
     pass
 
@@ -25,15 +34,13 @@ class nfqnl_msg_packet_hdr(ctypes.Structure):
                 ('hw_protocol', ctypes.c_uint16),
                 ('hook', ctypes.c_uint8)]
 
-#definimos los structs
 class nfnl_handle(ctypes.Structure):
     _fields_ = [('fd', ctypes.c_int),
                 ('subscriptions', ctypes.c_uint32),
                 ('seq', ctypes.c_uint32),
                 ('dump', ctypes.c_uint32),
                 ('rcv_buffer_size', ctypes.c_uint32),
-                #como los proximos datos no me interesan
-                #defino que van a ser void pointers
+                #####################################
                 ('local', ctypes.c_void_p),
                 ('peer', ctypes.c_void_p),
                 ('last_nlhdr', ctypes.c_void_p),
@@ -175,18 +182,27 @@ get_indev.restype = ctypes.c_uint32
 get_indev.argtypes = ctypes.POINTER(nfq_data),
 ########
 
+open_nfnl = netfilter.nfq_open_nfnl
+open_nfnl.restype = ctypes.POINTER(nfq_handle)
+open_nfnl.argtypes = ctypes.POINTER(nfnl_handle), 
+########
+
+set_queue_maxlen = netfilter.nfq_set_queue_maxlen
+set_queue_maxlen.restype = ctypes.c_int
+set_queue_maxlen.argtypes = ctypes.POINTER(nfq_q_handle), ctypes.c_uint32
+########
+
+
 
 def handler(uno, dos, tres, cuatro):
     pkg_hdr = get_msg_packet_hdr(tres)
-    #como hago ahora para acceder a los atributos de pkg_hdr 
-    #si se que es un int porque la funcion retorna un puntero a una estuctura
 
     print socket.ntohl(pkg_hdr.contents.packet_id)
 
     full_packet = ctypes.c_char_p(0)
    
     len_recv = get_payload(tres, ctypes.byref(full_packet));
-    
+
     print "catidad de bytes recividos", len_recv
     print "como recivi mas de 0 bytes, los datos los tengo que ver con el modulo struct o con impacket," "esto lo veo LUEGO" #dir(full_packet)
 
@@ -205,11 +221,13 @@ HANDLER = ctypes.CFUNCTYPE(
 
 c_handler = HANDLER(handler)
 
+
 nfqh = nfq_open()
 
 unbind_pf(nfqh, socket.AF_INET)
 bind_pf(nfqh, socket.AF_INET)
 queue = create_queue(nfqh, 0, c_handler, None)
+
 
 #NO HAY QUE HARDCODEAR ESTOS DATOS
 set_mode(queue, 2, 0xffff)
@@ -218,26 +236,11 @@ set_mode(queue, 2, 0xffff)
 nf = nfnlh(nfqh)
 fd = nfq_fd(nf)
 
-
-#ESTO ES MUYYYY FEOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 s = socket.fromfd(fd, 0, 0)
 while 1:
     recivido = s.recv(65535)
     handle_packet(nfqh, recivido, 65535)
-##################################################
 
 destroy_queue(queue)
 nfq_close(nfqh)
 
-
-#struct nfq_handle *nfq_open_nfnl(struct nfnl_handle *nfnlh)
-#int nfq_set_queue_maxlen(struct nfq_q_handle *qh, u_int32_t queuelen)
-#static struct nfq_q_handle *find_qh(struct nfq_handle *h, u_int16_t id)
-#static void add_qh(struct nfq_q_handle *qh)
-#static void del_qh(struct nfq_q_handle *qh)
-#struct nfqnl_msg_packet_hdr *nfq_get_msg_packet_hdr(struct nfq_data *nfad)
-####nfq_get_payload
-##uint32_t nfq_get_nfmark(struct nfq_data *nfad)
-##int nfq_get_timestamp(struct nfq_data *nfad, struct timeval *tv)
-#struct nfqnl_msg_packet_hw *nfq_get_packet_hw(struct nfq_data *nfad)
-#int nfq_set_verdict_mark(struct nfq_q_handle *qh, u_int32_t id, u_int32_t verdict, u_int32_t mark, u_int32_t datalen, unsigned char *buf)
