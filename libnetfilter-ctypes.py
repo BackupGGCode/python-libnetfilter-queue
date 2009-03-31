@@ -97,82 +97,105 @@ nfq_open.restype = ctypes.POINTER(nfq_handle)
 unbind_pf = netfilter.nfq_unbind_pf
 unbind_pf.restype = ctypes.c_int
 unbind_pf.argtypes = ctypes.POINTER(nfq_handle), ctypes.c_uint16
-#######
+########
 
 bind_pf = netfilter.nfq_bind_pf
 bind_pf.restype = ctypes.c_int
 bind_pf.argtypes = ctypes.POINTER(nfq_handle), ctypes.c_uint16 
-#######
+########
 
 create_queue = netfilter.nfq_create_queue
 create_queue.restype = ctypes.POINTER(nfq_handle)
 create_queue.argtypes = ctypes.POINTER(nfq_handle), ctypes.c_uint16, ctypes.c_void_p, ctypes.c_void_p
-#######
+########
 
 set_mode = netfilter.nfq_set_mode
 set_mode.restype = ctypes.c_int
 set_mode.argtypes = ctypes.POINTER(nfq_handle), ctypes.c_uint8, ctypes.c_uint32
-#######
+########
 
 nfnlh = netfilter.nfq_nfnlh
 nfnlh.restype = ctypes.POINTER(nfnl_handle)
 nfnlh.argtypes = ctypes.POINTER(nfq_handle),
-#######
+########
 
 nfq_fd = netfilter.nfnl_fd
 nfq_fd.restype = ctypes.c_int
 nfq_fd.argtypes = ctypes.POINTER(nfnl_handle),
-#######
+########
 
 handle_packet = netfilter.nfq_handle_packet
 handle_packet.restype = ctypes.c_int
 handle_packet.argtypes = ctypes.POINTER(nfq_handle), ctypes.c_char_p, ctypes.c_int
-#######
+########
 
 destroy_queue = netfilter.nfq_destroy_queue
 destroy_queue.restype = ctypes.c_int
 destroy_queue.argtypes = ctypes.POINTER(nfq_handle),
-#######
+########
 
 nfq_close = netfilter.nfq_close
 nfq_close.restype = ctypes.c_int
 nfq_close.argtypes = ctypes.POINTER(nfq_handle),
-######
+########
 
 
 get_payload = netfilter.nfq_get_payload
 get_payload.restype = ctypes.c_int
 get_payload.argtypes = ctypes.POINTER(nfq_data), ctypes.POINTER(ctypes.c_char_p)
-######
+########
 
 get_msg_packet_hdr = netfilter.nfq_get_msg_packet_hdr
 get_msg_packet_hdr.restype = ctypes.POINTER(nfqnl_msg_packet_hdr)
 get_msg_packet_hdr.argtypes = ctypes.POINTER(nfq_data),
-######
+########
+
+set_verdict = netfilter.nfq_set_verdict
+set_verdict.restype = ctypes.c_int
+set_verdict.argtypes = ctypes.POINTER(nfq_q_handle), ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_char_p
+########
+
+get_physoutdev = netfilter.nfq_get_physoutdev
+get_physoutdev.restype = ctypes.c_uint32
+get_physoutdev.argtypes = ctypes.POINTER(nfq_data),
+########
+
+get_outdev = netfilter.nfq_get_outdev
+get_outdev.restype = ctypes.c_uint32
+get_outdev.argtypes = ctypes.POINTER(nfq_data),
+########
+
+get_physindev = netfilter.nfq_get_physindev
+get_physindev.restype = ctypes.c_uint32
+get_physindev.argtypes = ctypes.POINTER(nfq_data),
+########
+
+get_indev = netfilter.nfq_get_indev
+get_indev.restype = ctypes.c_uint32
+get_indev.argtypes = ctypes.POINTER(nfq_data),
+########
+
 
 def handler(uno, dos, tres, cuatro):
     pkg_hdr = get_msg_packet_hdr(tres)
     #como hago ahora para acceder a los atributos de pkg_hdr 
     #si se que es un int porque la funcion retorna un puntero a una estuctura
 
-    print pkg_hdr.contents.packet_id
+    print socket.ntohl(pkg_hdr.contents.packet_id)
 
     full_packet = ctypes.c_char_p(0)
    
-    get_payload(tres, ctypes.byref(full_packet));
+    len_recv = get_payload(tres, ctypes.byref(full_packet));
     
-    print type(full_packet.value)
-   #string_buf = ctypes.create_string_buffer(full_packet)
-   ##en esta funcion full_packet tiene que ser una variable definida en python,
-   ##la funcion tiene que guardar el dato ahi
+    print "catidad de bytes recividos", len_recv
+    print "como recivi mas de 0 bytes, los datos los tengo que ver con el modulo struct o con impacket," "esto lo veo LUEGO" #dir(full_packet)
 
-   #print string_buf
+    print "get_phyindev", get_physindev(tres)
+    NF_ACCEPT = 1
+    set_verdict(uno, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
 
-   #print 'hola'
-   ##tiene que retornar si o si un entero porque el HANDLER DICE QUE TIENE QUE RETORNALO
+    #tiene que retornar si o si un entero porque el HANDLER DICE QUE TIENE QUE RETORNALO
     return 0
-
-
 
 
 HANDLER = ctypes.CFUNCTYPE(
@@ -198,17 +221,15 @@ fd = nfq_fd(nf)
 
 #ESTO ES MUYYYY FEOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 s = socket.fromfd(fd, 0, 0)
-recivido = s.recv(65535)
-print type(nfqh)
-handle_packet(nfqh, recivido, 65535)
+while 1:
+    recivido = s.recv(65535)
+    handle_packet(nfqh, recivido, 65535)
 ##################################################
 
 destroy_queue(queue)
 nfq_close(nfqh)
 
 
-
-#netfilter.nfq_set_verdict(qh, pkt.pkt_count, NF_ACCEPT, len, (unsigned char *)full_packet);
 #struct nfq_handle *nfq_open_nfnl(struct nfnl_handle *nfnlh)
 #int nfq_set_queue_maxlen(struct nfq_q_handle *qh, u_int32_t queuelen)
 #static struct nfq_q_handle *find_qh(struct nfq_handle *h, u_int16_t id)
@@ -219,14 +240,4 @@ nfq_close(nfqh)
 ##uint32_t nfq_get_nfmark(struct nfq_data *nfad)
 ##int nfq_get_timestamp(struct nfq_data *nfad, struct timeval *tv)
 #struct nfqnl_msg_packet_hw *nfq_get_packet_hw(struct nfq_data *nfad)
-
-
 #int nfq_set_verdict_mark(struct nfq_q_handle *qh, u_int32_t id, u_int32_t verdict, u_int32_t mark, u_int32_t datalen, unsigned char *buf)
-
-#/* all nfq_get_*dev() functions return 0 if not set, since linux only allows
-#* ifindex >= 1, see net/core/dev.c:2600  (in 2.6.13.1) */
-
-#u_int32_t nfq_get_physoutdev(struct nfq_data *nfad)
-#u_int32_t nfq_get_outdev(struct nfq_data *nfad)
-#u_int32_t nfq_get_physindev(struct nfq_data *nfad)
-#u_int32_t nfq_get_indev(struct nfq_data *nfad)
