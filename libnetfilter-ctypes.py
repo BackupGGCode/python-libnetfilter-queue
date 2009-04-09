@@ -26,7 +26,7 @@ class nfqnl_msg_packet_hw(ctypes.Structure):
     _fields_ = [("hw_addrlen", ctypes.c_uint16),
                 ("_pad", ctypes.c_uint16),
                 #############################
-                ("hw_addr", ctypes.c_void_p)]
+                ("hw_addr", ctypes.c_uint8 * 8)]
 
 
 class nfqnl_msg_packet_hdr(ctypes.Structure):
@@ -347,22 +347,23 @@ c_handler = HANDLER(py_handler)
 #Functions test
 ######################################################
 
-nfqh = open_queue()
-unbind_pf(nfqh, socket.AF_INET)
-bind_pf(nfqh, socket.AF_INET)
-queue = create_queue(nfqh, 0, c_handler, None)
+if __name__ == '__main__':
+    nfqh = open_queue()
+    unbind_pf(nfqh, socket.AF_INET)
+    bind_pf(nfqh, socket.AF_INET)
+    queue = create_queue(nfqh, 0, c_handler, None)
 
-set_mode(queue, NFQNL_COPY_PACKET, 0xffff)
+    set_mode(queue, NFQNL_COPY_PACKET, 0xffff)
 
-nf = nfnlh(nfqh)
-fd = nfq_fd(nf)
+    nf = nfnlh(nfqh)
+    fd = nfq_fd(nf)
 
-s = socket.fromfd(fd, 0, 0)
+    s = socket.fromfd(fd, 0, 0)
 
-while 1:
-    recivido = s.recv(65535)
-    handle_packet(nfqh, recivido, 65535)
+    while 1:
+        recivido = s.recv(65535)
+        handle_packet(nfqh, recivido, 65535)
 
-destroy_queue(queue)
-close_queue(nfqh)
+    destroy_queue(queue)
+    close_queue(nfqh)
 
