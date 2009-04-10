@@ -325,20 +325,21 @@ HANDLER = ctypes.CFUNCTYPE(
         )
 
 
-def py_handler(uno, dos, tres, cuatro):
-    pkg_hdr = get_msg_packet_hdr(tres)
+def py_handler(queue_handle, dos, nfa, data):
+    print 'py_handle'
+####pkg_hdr = get_msg_packet_hdr(tres)
 
-    print socket.ntohl(pkg_hdr.contents.packet_id)
+####print socket.ntohl(pkg_hdr.contents.packet_id)
 
-    full_packet = ctypes.c_char_p(0)
-   
-    len_recv = get_payload(tres, ctypes.byref(full_packet));
+####full_packet = ctypes.c_char_p(0)
+###
+####len_recv = get_payload(tres, ctypes.byref(full_packet));
 
-    print "bytes recived", len_recv
+####print "bytes recived", len_recv
 
-    print "get_phyindev", get_physindev(tres)
-    
-    set_verdict(uno, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
+####print "get_phyindev", get_physindev(tres)
+####
+####set_verdict(uno, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
 
 
 c_handler = HANDLER(py_handler)
