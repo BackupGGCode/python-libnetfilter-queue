@@ -3,7 +3,7 @@ import socket
 
 #TODO:
 #     change 0xffff in _set_mode method
-
+#     Segmentation fault if not root in _set_mode
 NF_DROP, NF_ACCEPT, NF_STOLEN = libnetfilter_ll.NF_DROP, libnetfilter_ll.NF_ACCEPT, libnetfilter_ll.NF_STOLEN
 NF_QUEUE, NF_REPEAT, NF_STOP = libnetfilter_ll.NF_QUEUE, libnetfilter_ll.NF_REPEAT, libnetfilter_ll.NF_STOP
 NF_MAX_VERDICT = libnetfilter_ll.NF_MAX_VERDICT
@@ -13,6 +13,7 @@ NFQNL_COPY_NONE, NFQNL_COPY_META, NFQNL_COPY_PACKET = libnetfilter_ll.NFQNL_COPY
 
 class NFQ(object):
    def __init__(self, packet_len = 65535, number_queue = 0, family = socket.AF_INET):
+
        self.packet_len = packet_len
        self.family = family
 
@@ -32,7 +33,6 @@ class NFQ(object):
        self._bind_pf()
 
        self.__c_handler = libnetfilter_ll.HANDLER(self._pyhandler)
-
        self.queue_handler = {}
        self.queue_handler['queue'] =  libnetfilter_ll.create_queue(self.__nfq_handler, number_queue, self.__c_handler, None)
 
