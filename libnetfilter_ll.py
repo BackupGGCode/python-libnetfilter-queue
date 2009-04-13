@@ -1,7 +1,6 @@
 import ctypes
 import ctypes.util as utils
-import socket
-import os
+from socket import ntohl
 
 #TODO:
 #     All test functions
@@ -10,7 +9,6 @@ import os
 
 #load library
 netfilter = ctypes.cdll.LoadLibrary(utils.find_library('netfilter_queue'))
-
 
 class nfq_handle (ctypes.Structure):
     pass
@@ -46,12 +44,12 @@ class nfnl_handle(ctypes.Structure):
                 ('last_nlhdr', ctypes.c_void_p),
                 ('subsys', ctypes.c_void_p)]
 
-call = ctypes.CFUNCTYPE(
+_call = ctypes.CFUNCTYPE(
                  ctypes.c_int, *(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)
         )
 
 class nfnl_callback(ctypes.Structure):
-    _fileds_ = [('call', call),
+    _fileds_ = [('call', _call),
                 ('data', ctypes.c_void_p),
                 ('attr_count', ctypes.c_uint16)]
 
@@ -98,7 +96,7 @@ class nfq_data(ctypes.Structure):
 # Responses from hook functions.
 ##################################################################
 NF_DROP, NF_ACCEPT, NF_STOLEN = 0, 1, 2
-NF_QUEUE, NF_REPEAT, NF_STOP= 3, 4, 5
+NF_QUEUE, NF_REPEAT, NF_STOP = 3, 4, 5
 NF_MAX_VERDICT = NF_STOP
 
 ##################################################################
@@ -322,11 +320,31 @@ get_payload.argtypes = ctypes.POINTER(nfq_data), ctypes.POINTER(ctypes.c_char_p)
 HANDLER = ctypes.CFUNCTYPE(
                            #(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data)
                            None, *(ctypes.POINTER(nfq_q_handle), ctypes.c_void_p, ctypes.POINTER(nfq_data), ctypes.c_void_p)
-        )
+                          )
+
+def get_full_payload(nfa):
+    full_packet = ctypes.c_char_p(0)
+    len_recv = get_payload(nfa, ctypes.byref(full_packet));
+    return len_recv, full_packet
+
+def get_full_msg_packet_hdr(nfa):
+    pkg_hdr = get_msg_packet_hdr(nfa)
+    return { 'packet_id' : ntohl(pkg_hdr.contents.packet_id),
+             'hw_protocol' :  ntohl(pkg_hdr.contents.hw_protocol),
+             'hook' : pkg_hdr.contents.hook }
 
 
-def py_handler(queue_handle, dos, nfa, data):
-    print 'py_handle'
+######################################################
+#Functions test
+######################################################
+
+if __name__ == '__main__':
+  
+
+    def py_handler(queue_handle, nfmsg, nfa, data):
+        print 'py_handle'
+
+    c_handler = HANDLER(py_handler)
 ####pkg_hdr = get_msg_packet_hdr(tres)
 
 ####print socket.ntohl(pkg_hdr.contents.packet_id)
@@ -342,13 +360,6 @@ def py_handler(queue_handle, dos, nfa, data):
 ####set_verdict(uno, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
 
 
-c_handler = HANDLER(py_handler)
-
-######################################################
-#Functions test
-######################################################
-
-if __name__ == '__main__':
     nfqh = open_queue()
     unbind_pf(nfqh, socket.AF_INET)
     bind_pf(nfqh, socket.AF_INET)
