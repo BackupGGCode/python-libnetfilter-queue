@@ -1,12 +1,14 @@
 import ctypes
 import ctypes.util as utils
 from socket import ntohl
+import struct
+import string
 
 #TODO:
 #     All test functions
 #     Explain all verdicts
 #     Fix hw_addr type
-
+#     set_veredict has convert data buffer into c_char_p
 #load library
 netfilter = ctypes.cdll.LoadLibrary(utils.find_library('netfilter_queue'))
 
@@ -314,7 +316,7 @@ get_packet_hw.argtypes = ctypes.POINTER(nfq_data),
 #           Retrieve the payload for a queued packet.
 get_payload = netfilter.nfq_get_payload
 get_payload.restype = ctypes.c_int
-get_payload.argtypes = ctypes.POINTER(nfq_data), ctypes.POINTER(ctypes.c_char_p)
+get_payload.argtypes = ctypes.POINTER(nfq_data), ctypes.POINTER(ctypes.c_void_p)
 ########
 
 HANDLER = ctypes.CFUNCTYPE(
@@ -323,9 +325,11 @@ HANDLER = ctypes.CFUNCTYPE(
                           )
 
 def get_full_payload(nfa):
-    full_packet = ctypes.c_char_p(0)
-    len_recv = get_payload(nfa, ctypes.byref(full_packet));
-    return len_recv, full_packet
+    ptr_packet = ctypes.c_void_p(0)
+    len_recv = get_payload(nfa, ctypes.byref(ptr_packet));
+    data = ctypes.string_at(ptr_packet, len_recv)
+    unpacket_data = struct.unpack('c' * len_recv, data)
+    return len_recv, unpacket_data
 
 def get_full_msg_packet_hdr(nfa):
     pkg_hdr = get_msg_packet_hdr(nfa)
@@ -339,26 +343,16 @@ def get_full_msg_packet_hdr(nfa):
 ######################################################
 
 if __name__ == '__main__':
-  
-
     def py_handler(queue_handle, nfmsg, nfa, data):
-        print 'py_handle'
+        pkg_hdr = get_msg_packet_hdr(nfa)                                                                 
+        print socket.ntohl(pkg_hdr.contents.packet_id)                                                
+        full_packet = ctypes.c_char_p(0)
+        len_recv = get_payload(tres, ctypes.byref(full_packet));
+        print "bytes recived", len_recv
+        print "get_phyindev", get_physindev(tres)
+        set_verdict(queue_handler, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
 
     c_handler = HANDLER(py_handler)
-####pkg_hdr = get_msg_packet_hdr(tres)
-
-####print socket.ntohl(pkg_hdr.contents.packet_id)
-
-####full_packet = ctypes.c_char_p(0)
-###
-####len_recv = get_payload(tres, ctypes.byref(full_packet));
-
-####print "bytes recived", len_recv
-
-####print "get_phyindev", get_physindev(tres)
-####
-####set_verdict(uno, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
-
 
     nfqh = open_queue()
     unbind_pf(nfqh, socket.AF_INET)
