@@ -1,14 +1,12 @@
 import ctypes
 import ctypes.util as utils
 from socket import ntohl
-import struct
-import string
 
 #TODO:
 #     All test functions
 #     Explain all verdicts
 #     Fix hw_addr type
-#     set_veredict has convert data buffer into c_char_p
+
 #load library
 netfilter = ctypes.cdll.LoadLibrary(utils.find_library('netfilter_queue'))
 
@@ -328,8 +326,7 @@ def get_full_payload(nfa):
     ptr_packet = ctypes.c_void_p(0)
     len_recv = get_payload(nfa, ctypes.byref(ptr_packet));
     data = ctypes.string_at(ptr_packet, len_recv)
-    unpacket_data = struct.unpack('c' * len_recv, data)
-    return len_recv, unpacket_data
+    return len_recv, data
 
 def get_full_msg_packet_hdr(nfa):
     pkg_hdr = get_msg_packet_hdr(nfa)
@@ -337,22 +334,32 @@ def get_full_msg_packet_hdr(nfa):
              'hw_protocol' :  ntohl(pkg_hdr.contents.hw_protocol),
              'hook' : pkg_hdr.contents.hook }
 
+def set_pyverdict(queue_handle, packet_id, verdict, buffer_len, buffer):
+    set_verdict(queue_handle, packet_id, verdict, buffer_len, ctypes.c_char_p(buffer))
+
+
 
 ######################################################
 #Functions test
 ######################################################
 
 if __name__ == '__main__':
+    import socket
+    import os
     def py_handler(queue_handle, nfmsg, nfa, data):
-        pkg_hdr = get_msg_packet_hdr(nfa)                                                                 
-        print socket.ntohl(pkg_hdr.contents.packet_id)                                                
-        full_packet = ctypes.c_char_p(0)
-        len_recv = get_payload(tres, ctypes.byref(full_packet));
-        print "bytes recived", len_recv
-        print "get_phyindev", get_physindev(tres)
-        set_verdict(queue_handler, socket.ntohl(pkg_hdr.contents.packet_id), NF_ACCEPT, len_recv, full_packet)
+        print 'handling packet ...'
+        pkg_hdr = get_full_msg_packet_hdr(nfa)                                                                 
+        len_recv, data = get_full_payload(nfa);
+        set_pyverdict(queue_handle, pkg_hdr['packet_id'], NF_ACCEPT, len_recv, data)
+    
 
     c_handler = HANDLER(py_handler)
+    
+    uid = os.getuid()
+
+    if uid != 0:
+        print 'you need be root'
+        exit()
 
     nfqh = open_queue()
     unbind_pf(nfqh, socket.AF_INET)
@@ -366,7 +373,7 @@ if __name__ == '__main__':
 
     s = socket.fromfd(fd, 0, 0)
 
-    while 1:
+    while True:
         recivido = s.recv(65535)
         handle_packet(nfqh, recivido, 65535)
 
