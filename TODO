@@ -1,0 +1,12 @@
+libnetfilter_ll.py:
+                    All test functions
+                    Explain all verdicts
+                    Fix hw_addr type
+
+PyNFQ.py:
+          make verify_to_change_verdict decorator
+          what is the veredicts NF_STOLEN, NF_STOP and NF_MAX_VERDICT?
+          _set_iphdr would be addoption
+
+Documentation
+
