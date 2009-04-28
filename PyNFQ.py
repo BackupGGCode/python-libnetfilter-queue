@@ -1,47 +1,58 @@
 import os, socket
 import libnetfilter_ll as _libnetfilter_ll
-from impacket import ImpactDecoder
-from libnetfilter_ll import NFQNL_COPY_NONE, NFQNL_COPY_META, NFQNL_COPY_PACKET 
+from libnetfilter_ll import NFQNL_COPY_NONE as MODE_NONE, NFQNL_COPY_META as MODE_META, NFQNL_COPY_PACKET as MODE_PACKET
 
 #TODO:
 #     make verify_to_change_verdict decorator
 #     what is the veredicts NF_STOLEN, NF_STOP and NF_MAX_VERDICT?
+#     check max_len value
 
 class Packet(object):
    def __init__(self, buffer, buffer_len, queue, nfa):
-       self.__data = buffer
-       self.__data_len = buffer_len
-       self.__queue = queue
        self.__nfa = nfa
+       self.__queue = queue
+       self.raw_data = buffer
+       self.data_len = buffer_len
+       self.nfqhdr = self._get_nfqhdr()
+       self.timestamp = _libnetfilter_ll.get_pytimestamp(self.__nfa)
 
    def drop(self):
-       self._verdict = _libnetfilter_ll.NF_DROP
+       self._verdict = _libnetfilter_ll.NF_DROP, None
        
    def reinject(self):
-       self._verdict = _libnetfilter_ll.NF_ACCEPT
+       self._verdict = _libnetfilter_ll.NF_ACCEPT, None
 
-   def repeat(self):
-       self._verdict = _libnetfilter_ll.NF_REPEAT
+   def repeat(self, mark = None):
+       self._verdict = _libnetfilter_ll.NF_REPEAT, mark
 
-   def reenqueue(self):
-       self._verdict = _libnetfilter_ll.NF_QUEUE
+   def reenqueue(self, mark = None):
+       self._verdict = _libnetfilter_ll.NF_QUEUE, mark
    
    def _get_nfqhdr(self):
        return _libnetfilter_ll.get_full_msg_packet_hdr(self.__nfa)
 
-   #@verify_to_change_verdict
-   def _set_verdict(self, verdict):
-       _libnetfilter_ll.set_pyverdict(self.__queue, self.nfqhdr['packet_id'], 
-                                      verdict, self.__data_len, self.__data) 
 
-   
+   #@verify_to_change_verdict
+   def _set_verdict(self, verdict_mark):
+       verdict = verdict_mark[0]
+       mark = verdict_mark[1]
+
+       if mark:
+           _libnetfilter_ll.set_verdict_mark(self.__queue, self.nfqhdr['packet_id'],
+                                             verdict, mark, self.data_len, self.raw_data)
+       else:
+           _libnetfilter_ll.set_pyverdict(self.__queue, self.nfqhdr['packet_id'],
+                                          verdict, self.data_len, self.raw_data)
+
+   def _get_mark(self):
+       return _libnetfilter_ll.get_nfmark(self.__nfa)
+
+   def _get_timestamp(self):
+       _libnetfilter_ll.get_timestamp(self.__nfa)
+
+
    _verdict = property(fset = _set_verdict)
-   nfqhdr = property(fget = _get_nfqhdr)
-#  iphdr = property(fget = _get_iphdr, fset = _set_iphdr)
-#  tcphdr = property(fget = _get_tcphdr, fset = _set_tcphdr)
-#  udphdr = property(fget = _get_udphdr, fset = _set_udphdr)
-#  icmphdr = property(fget = _get_icmphdr, fset = _set_icmphdr)
-#  payload = property(fget = _get_payload, fset = _set_payload)
+   _mark = property(fget = _get_mark)
 
 
 class NFQ(object):
@@ -52,7 +63,7 @@ class NFQ(object):
            kwargs = {}  
 
        if os.getuid() != 0:
-           raise "UserError", "please, get root to run this"
+           raise "UserError", "You must be root"
 
        self.__target = target
        self.__args = args     #args to target function
@@ -75,7 +86,7 @@ class NFQ(object):
 
        self.queue_handler = {}
        self.queue_handler['queue'] =  _libnetfilter_ll.create_queue(self.__nfq_handler, number_queue, self.__c_handler, None)
-       self.mode = {'mode':NFQNL_COPY_PACKET} #set mode and set default size data 
+       self.mode = {'mode':MODE_PACKET} #set mode and set default size data 
 
        nf = _libnetfilter_ll.nfnlh(self.__nfq_handler)
        fd = _libnetfilter_ll.nfq_fd(nf)
@@ -124,21 +135,24 @@ class NFQ(object):
    def _set_mode (self, value):
        """ set queue mode"""
 
-       the_mode = value.get('mode', NFQNL_COPY_PACKET)
+       the_mode = value.get('mode', MODE_PACKET)
        amount_data = value.get('size_data', 65535)
 
        _libnetfilter_ll.set_mode(self.queue_handler['queue'], the_mode, amount_data)
 
+   def _set_max_len(self, value):
+       set_queue_maxlen(self.queue_handler['queue'], value)
+
    mode = property(fset = _set_mode)
+   max_len = property(fset = _set_max_len)
 
 if __name__ == '__main__':
     class myNFQ(NFQ):
-        num = 0
         def run(self, packet):
-            print 'packete numero', self.num
+            packet.raw_data = packet.raw_data.replace('PNG','OUT')
+            print 'packet changed'
+
             packet.reinject()
-            del packet
-            self.num += 1
 
 
     nfq = myNFQ()

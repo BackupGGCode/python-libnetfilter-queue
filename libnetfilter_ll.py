@@ -337,6 +337,10 @@ def get_full_msg_packet_hdr(nfa):
 def set_pyverdict(queue_handle, packet_id, verdict, buffer_len, buffer):
     set_verdict(queue_handle, packet_id, verdict, buffer_len, ctypes.c_char_p(buffer))
 
+def get_pytimestamp(nfa):
+    mtime = timeval()
+    get_timestamp(nfa, ctypes.byref(mtime))
+    return mtime.tv_sec, mtime.tv_usec
 
 
 ######################################################
@@ -347,6 +351,7 @@ if __name__ == '__main__':
     import socket
     import os
     def py_handler(queue_handle, nfmsg, nfa, data):
+        get_pytimestamp(nfa)
         print 'handling packet ...'
         pkg_hdr = get_full_msg_packet_hdr(nfa)                                                                 
         len_recv, data = get_full_payload(nfa);
@@ -358,7 +363,7 @@ if __name__ == '__main__':
     uid = os.getuid()
 
     if uid != 0:
-        print 'you need be root'
+        print 'you must be root'
         exit()
 
     nfqh = open_queue()
