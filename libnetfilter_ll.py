@@ -1,4 +1,8 @@
-import ctypes
+try:
+    import ctypes
+except ImportError:
+    raise ImportError, 'you need ctypes packet'
+
 import ctypes.util as utils
 from socket import ntohl
 
@@ -8,7 +12,11 @@ from socket import ntohl
 #     Fix hw_addr type
 
 #load library
-netfilter = ctypes.cdll.LoadLibrary(utils.find_library('netfilter_queue'))
+nflib = utils.find_library('netfilter_queue')
+
+assert nflib, 'you need netfilter_queue lib'
+
+netfilter = ctypes.cdll.LoadLibrary(nflib)
 
 class nfq_handle (ctypes.Structure):
     pass
