@@ -125,8 +125,8 @@ nfq_fd.argtypes = ctypes.POINTER(nfnl_handle),
 
 #Description:
 #            This function obtains a netfilter queue connection handle
-open_queue = netfilter.nfq_open
-open_queue.restype = ctypes.POINTER(nfq_handle)
+ll_open_queue = netfilter.nfq_open
+ll_open_queue.restype = ctypes.POINTER(nfq_handle)
 ########
 
 #Description:
@@ -207,7 +207,7 @@ set_queue_maxlen.argtypes = ctypes.POINTER(nfq_q_handle), ctypes.c_uint32
 #            calling this function, or by calling the nfq_set_verdict_mark() function.
 #            NF_DROP - Drop packet
 #            NF_ACCEPT - Accept packet
-#            NF_STOLEN -
+#            NF_STOLEN - Don't continue to process the packet and not deallocate it.
 #            NF_QUEUE - Enqueue the packet
 #            NF_REPEAT - Handle the same packet
 #            NF_STOP - 
@@ -321,6 +321,11 @@ HANDLER = ctypes.CFUNCTYPE(
                            #(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nfq_data *nfa, void *data)
                            None, *(ctypes.POINTER(nfq_q_handle), ctypes.c_void_p, ctypes.POINTER(nfq_data), ctypes.c_void_p)
                           )
+
+def open_queue():
+    handler = ll_open_queue()
+    handler != None, "can't open the queue"
+    return handler
 
 def get_full_payload(nfa):
     ptr_packet = ctypes.c_void_p(0)
