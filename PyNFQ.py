@@ -7,7 +7,7 @@ from libnetfilter_ll import NFQNL_COPY_NONE as MODE_NONE, NFQNL_COPY_META as MOD
 #     what is the veredicts NF_STOLEN, NF_STOP and NF_MAX_VERDICT?
 #     check max_len value
 
-class Packet(object):
+class NFQPacket(object):
    def __init__(self, buffer, buffer_len, queue, nfa):
        self.__nfa = nfa
        self.__queue = queue
@@ -15,6 +15,10 @@ class Packet(object):
        self.data_len = buffer_len
        self.nfqhdr = self._get_nfqhdr()
        self.timestamp = _libnetfilter_ll.get_pytimestamp(self.__nfa)
+       self.indev = _libnetfilter_ll.get_indev(self.__nfa)
+       self.physindev = _libnetfilter_ll.get_physindev(self.__nfa)
+       self.outdev = _libnetfilter_ll.get_outdev(self.__nfa)
+       self.physoutdev = _libnetfilter_ll.get_physoutdev(self.__nfa)
 
    def drop(self):
        self._verdict = _libnetfilter_ll.NF_DROP, None
@@ -62,8 +66,8 @@ class NFQ(object):
        if kwargs is None:
            kwargs = {}  
 
-       if os.getuid() != 0:
-           raise "UserError", "You must be root"
+       uid = os.getuid()
+       assert uid == 0, "You must be root"
 
        self.__target = target
        self.__args = args     #args to target function
@@ -105,16 +109,16 @@ class NFQ(object):
 
 
    def _pyhandler(self, queue_handle, nfmsg, data_queue, data):
-       """ Manage info, then call run function. This method make a Packet instance, then call
+       """ Manage info, then call run function. This method make a NFQPacket instance, then call
            the setted target or run function and put the instance inside his param"""
 
        len_payload, payload = _libnetfilter_ll.get_full_payload(data_queue)
-       packet_recived = Packet(payload, len_payload, self.queue_handler['queue'], data_queue)
+       packet_recived = NFQPacket(payload, len_payload, self.queue_handler['queue'], data_queue)
        self.run(packet_recived)
 
 
    def run(self, info):
-       """ function that manage the packet, the parameter is a Packet instance """
+       """ function that manage the packet, the parameter is a NFQPacket instance """
        try:
            self.__target(info, *self.__args, **self.__kwargs)
        except TypeError:
@@ -149,8 +153,13 @@ class NFQ(object):
 if __name__ == '__main__':
     class myNFQ(NFQ):
         def run(self, packet):
-            packet.raw_data = packet.raw_data.replace('PNG','OUT')
+            print str(packet.raw_data)
+            #packet.raw_data = packet.raw_data.replace('PNG','OUT')
             print 'packet changed'
+            print packet.indev
+            print packet.outdev
+            print packet.physindev
+            print packet.physoutdev
 
             packet.reinject()
 
