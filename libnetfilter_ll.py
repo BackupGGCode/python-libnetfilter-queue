@@ -291,7 +291,7 @@ get_physoutdev.argtypes = ctypes.POINTER(nfq_data),
 
 #get_indev_name = netfilter.nfq_get_indev_name
 #get_indev_name.restype = ctypes.c_int
-#get_indev_name.argtypes = ctypes.POINTER(nlif_handle), ctypes.POINTER(nfq_data), ctypes.c_char_p
+#get_indev_name.argtypes = ctypes.POINTER(nlif_handle), ctypes.POINTER(nfq_data), ctypes.c_void_p
 ########
 
 #get_physindev_name = netfilter.nfq_get_physindev_name
@@ -355,6 +355,14 @@ def get_pytimestamp(nfa):
     get_timestamp(nfa, ctypes.byref(mtime))
     return mtime.tv_sec, mtime.tv_usec
 
+#def test_get_indev_name(nfa):
+#    ptr_name = ctypes.c_void_p(0)
+#    nlif = nlif_handle()
+#    get_indev_name(ctypes.byref(nlif), nfa, ptr_name)
+#    print ptr_name
+    
+    
+
 
 ######################################################
 #Functions test
@@ -364,6 +372,7 @@ if __name__ == '__main__':
     import socket
     import os
     def py_handler(queue_handle, nfmsg, nfa, data):
+        #test_get_indev_name(nfa)
         get_pytimestamp(nfa)
         print 'handling packet ...'
         pkg_hdr = get_full_msg_packet_hdr(nfa)                                                                 

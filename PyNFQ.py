@@ -11,6 +11,7 @@ class NFQPacket(object):
    def __init__(self, buffer, buffer_len, queue, nfa):
        self.__nfa = nfa
        self.__queue = queue
+
        self.raw_data = buffer
        self.data_len = buffer_len
        self.nfqhdr = self._get_nfqhdr()
@@ -35,7 +36,6 @@ class NFQPacket(object):
    def _get_nfqhdr(self):
        return _libnetfilter_ll.get_full_msg_packet_hdr(self.__nfa)
 
-
    #@verify_to_change_verdict
    def _set_verdict(self, verdict_mark):
        verdict = verdict_mark[0]
@@ -47,13 +47,12 @@ class NFQPacket(object):
        else:
            _libnetfilter_ll.set_pyverdict(self.__queue, self.nfqhdr['packet_id'],
                                           verdict, self.data_len, self.raw_data)
-
+           
    def _get_mark(self):
        return _libnetfilter_ll.get_nfmark(self.__nfa)
 
    def _get_timestamp(self):
        _libnetfilter_ll.get_timestamp(self.__nfa)
-
 
    _verdict = property(fset = _set_verdict)
    _mark = property(fget = _get_mark)
