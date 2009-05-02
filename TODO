@@ -6,7 +6,6 @@ libnetfilter_ll.py:
 PyNFQ.py:
           make verify_to_change_verdict decorator
           what is the veredicts NF_STOLEN, NF_STOP and NF_MAX_VERDICT?
-          check max_len value
 
 Documentation
 

@@ -5,7 +5,6 @@ from libnetfilter_ll import NFQNL_COPY_NONE as MODE_NONE, NFQNL_COPY_META as MOD
 #TODO:
 #     make verify_to_change_verdict decorator
 #     what is the veredicts NF_STOLEN, NF_STOP and NF_MAX_VERDICT?
-#     check max_len value
 
 class NFQPacket(object):
    def __init__(self, buffer, buffer_len, queue, nfa):
@@ -144,6 +143,10 @@ class NFQ(object):
        _libnetfilter_ll.set_mode(self.queue_handler['queue'], the_mode, amount_data)
 
    def _set_max_len(self, value):
+
+       if max_len > 65535:
+           max_len = 65535
+
        set_queue_maxlen(self.queue_handler['queue'], value)
 
    mode = property(fset = _set_mode)
