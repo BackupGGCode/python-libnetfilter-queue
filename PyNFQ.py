@@ -1,4 +1,6 @@
-import os, socket
+import os
+import socket
+import encodings
 import libnetfilter_ll as _libnetfilter_ll
 from libnetfilter_ll import NFQNL_COPY_NONE as MODE_NONE, NFQNL_COPY_META as MODE_META, NFQNL_COPY_PACKET as MODE_PACKET
 
@@ -21,28 +23,31 @@ class NFQPacket(object):
        self.physoutdev = _libnetfilter_ll.get_physoutdev(self.__nfa)
 
    def drop(self):
-       self._verdict = _libnetfilter_ll.NF_DROP, None
+       self._verdict = _libnetfilter_ll.NF_DROP
        
    def reinject(self):
-       self._verdict = _libnetfilter_ll.NF_ACCEPT, None
+       self._verdict = _libnetfilter_ll.NF_ACCEPT
 
-   def repeat(self, mark = None):
-       self._verdict = _libnetfilter_ll.NF_REPEAT, mark
+   def repeat(self):
+       self._verdict = _libnetfilter_ll.NF_REPEAT
 
-   def reenqueue(self, mark = None):
-       self._verdict = _libnetfilter_ll.NF_QUEUE, mark
+   def reenqueue(self):
+       self._verdict = _libnetfilter_ll.NF_QUEUE
+
+   def __repr__(self):                                
+       strlst = [ '\\x' + ch.encode('hex') for ch in self.raw_data ]
+       lst_str = string.join(strlst, '')              
+       return lst_str                 
    
    def _get_nfqhdr(self):
        return _libnetfilter_ll.get_full_msg_packet_hdr(self.__nfa)
 
    #@verify_to_change_verdict
-   def _set_verdict(self, verdict_mark):
-       verdict = verdict_mark[0]
-       mark = verdict_mark[1]
+   def _set_verdict(self, verdict):
 
-       if mark:
+       if self.mark:
            _libnetfilter_ll.set_verdict_mark(self.__queue, self.nfqhdr['packet_id'],
-                                             verdict, mark, self.data_len, self.raw_data)
+                                             verdict, self.mark, self.data_len, self.raw_data)
        else:
            _libnetfilter_ll.set_pyverdict(self.__queue, self.nfqhdr['packet_id'],
                                           verdict, self.data_len, self.raw_data)
@@ -53,8 +58,8 @@ class NFQPacket(object):
    def _get_timestamp(self):
        _libnetfilter_ll.get_timestamp(self.__nfa)
 
+   mark = property(fget = _get_mark)
    _verdict = property(fset = _set_verdict)
-   _mark = property(fget = _get_mark)
 
 
 class NFQ(object):
@@ -156,7 +161,7 @@ if __name__ == '__main__':
     class myNFQ(NFQ):
         def run(self, packet):
             print str(packet.raw_data)
-            #packet.raw_data = packet.raw_data.replace('PNG','OUT')
+            packet.raw_data = packet.raw_data.replace('PNG','OUT')
             print 'packet changed'
             print packet.indev
             print packet.outdev
